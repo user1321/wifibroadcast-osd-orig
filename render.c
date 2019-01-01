@@ -18,6 +18,7 @@
 // windhose    
 // cog    
 #include <stdint.h>
+#include <stdio.h>
 #include "render.h"
 #include "telemetry.h"
 #include "osdconfig.h"
@@ -44,6 +45,7 @@ int injection_failed_last;
 int tx_restart_count_last;
 
 bool no_signal = false;
+FILE *fptr;
 
 
 long long current_ts() {
@@ -139,6 +141,53 @@ void render(telemetry_data_t *td, uint8_t cpuload_gnd, uint8_t temp_gnd, uint8_t
 	    home_set = true;
 	    home_lat = td->latitude;
 	    home_lon = td->longitude;
+		
+		//Save GPS home
+		float lonlat[2];
+        	lonlat[0] = 0.0;
+        	lonlat[1] = 0.0;
+
+		//read
+	        fptr = fopen("/dev/shm/homepos","rb");
+        	if(fptr == NULL)
+        	{
+                	printf("No GPS home file found. Load home from Pixhawk\n" );
+
+			home_lat = td->latitude;
+            		home_lon = td->longitude;
+
+                	lonlat[0] = home_lon;
+              		lonlat[1] = home_lat;
+                	//Save data for future
+                	//write
+                	fptr = fopen("/dev/shm/homepos","wb");
+                	if(fptr == NULL)
+                	{
+                        	printf("Cannot create a file to store GPS home position \n" );
+                        	return 1;
+                	}
+                	else
+                	{
+                        	printf("Saving GPS home position... \n");
+                        	fwrite(&lonlat, sizeof(lonlat), 1, fptr);
+                        	fclose(fptr);
+                	}
+
+        	}
+        	else
+        	{
+                	printf("GPS home file exist. Load Home position from it \n");
+                	fread(&lonlat, sizeof(lonlat), 1, fptr);
+                	fclose(fptr);
+
+                	home_lat = lonlat[1];
+                	home_lon = lonlat[0];
+
+                	printf("Lat:%f \n",  home_lat);
+                	printf("Lon:%f \n",  home_lon);
+        	}
+	//mod end		
+		
 	}
     }
     #endif
